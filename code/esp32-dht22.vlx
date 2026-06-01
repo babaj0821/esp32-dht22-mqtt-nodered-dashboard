@@ -1,0 +1,90 @@
+{
+  "format": "velxio-project",
+  "version": 1,
+  "exportedAt": "2026-06-01T10:42:27.849Z",
+  "boards": [
+    {
+      "id": "arduino-uno",
+      "boardKind": "esp32",
+      "x": 50,
+      "y": 50,
+      "activeFileGroupId": "group-arduino-uno",
+      "languageMode": "arduino",
+      "serialBaudRate": 0
+    }
+  ],
+  "fileGroups": {
+    "group-arduino-uno": [
+      {
+        "name": "sketch.ino",
+        "content": "// ESP32 — DHT22 Temperature & Humidity Sensor + MQTT Publish\n// Wiring: DATA → GPIO4 | VCC → 3V3 | GND → GND\n\n#include <WiFi.h>\n#include <PubSubClient.h>\n#include <DHT.h>\n\n#define DHT_PIN  4\n#define DHT_TYPE DHT22\n\nDHT dht(DHT_PIN, DHT_TYPE);\n\nconst char* ssid = \"YOUR_WIFI_NAME\";\nconst char* password = \"YOUR_WIFI_PASSWORD\";\n\nconst char* mqtt_server = \"192.168.x.x\";   \nconst int mqtt_port = 1884;\nconst char* mqtt_topic = \"data/sensor/test\";\n\nWiFiClient espClient;\nPubSubClient client(espClient);\n\nunsigned long lastSendTime = 0;\nconst unsigned long interval = 5000; \n\nvoid connectToWiFi() {\n  Serial.print(\"Connecting to WiFi: \");\n  Serial.println(ssid);\n\n  WiFi.begin(ssid, password);\n\n  while (WiFi.status() != WL_CONNECTED) {\n    delay(500);\n    Serial.print(\".\");\n  }\n\n  Serial.println();\n  Serial.println(\"WiFi connected.\");\n  Serial.print(\"ESP32 IP: \");\n  Serial.println(WiFi.localIP());\n}\n\nvoid connectToMQTT() {\n  while (!client.connected()) {\n    Serial.print(\"Connecting to MQTT... \");\n\n    String clientId = \"ESP32-DHT22-\";\n    clientId += String(random(0xffff), HEX);\n\n    if (client.connect(clientId.c_str())) {\n      Serial.println(\"connected.\");\n    } else {\n      Serial.print(\"failed, rc=\");\n      Serial.print(client.state());\n      Serial.println(\" retrying in 2 seconds...\");\n      delay(2000);\n    }\n  }\n}\n\nvoid setup() {\n  Serial.begin(115200);\n\n  dht.begin();\n  delay(2000);\n\n  Serial.println(\"ESP32 DHT22 MQTT ready!\");\n\n  connectToWiFi();\n\n  client.setServer(mqtt_server, mqtt_port);\n}\n\nvoid loop() {\n  if (!client.connected()) {\n    connectToMQTT();\n  }\n\n  client.loop();\n\n  unsigned long now = millis();\n\n  if (now - lastSendTime >= interval) {\n    lastSendTime = now;\n\n    float h = dht.readHumidity();\n    float t = dht.readTemperature();\n\n    if (isnan(h) || isnan(t)) {\n      Serial.println(\"DHT22: waiting for sensor...\");\n      return;\n    }\n\n    String payload = String(t, 1) + \",\" + String(h, 1);\n\n    Serial.print(\"Publishing to MQTT: \");\n    Serial.println(payload);\n\n    client.publish(mqtt_topic, payload.c_str());\n  }\n}"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "e32-dht1",
+      "metadataId": "dht22",
+      "x": 430,
+      "y": 150,
+      "properties": {
+        "temperature": "28",
+        "humidity": "65"
+      }
+    }
+  ],
+  "wires": [
+    {
+      "waypoints": [],
+      "id": "e32d-vcc",
+      "start": {
+        "componentId": "arduino-uno",
+        "pinName": "3V3",
+        "x": 184,
+        "y": 257
+      },
+      "end": {
+        "componentId": "e32-dht1",
+        "pinName": "VCC",
+        "x": 434,
+        "y": 156
+      },
+      "color": "#ff4444"
+    },
+    {
+      "waypoints": [],
+      "id": "e32d-gnd",
+      "start": {
+        "componentId": "arduino-uno",
+        "pinName": "GND",
+        "x": 56,
+        "y": 244
+      },
+      "end": {
+        "componentId": "e32-dht1",
+        "pinName": "GND",
+        "x": 434,
+        "y": 156
+      },
+      "color": "#000000"
+    },
+    {
+      "waypoints": [],
+      "id": "e32d-sda",
+      "start": {
+        "componentId": "arduino-uno",
+        "pinName": "4",
+        "x": 184,
+        "y": 206
+      },
+      "end": {
+        "componentId": "e32-dht1",
+        "pinName": "SDA",
+        "x": 434,
+        "y": 156
+      },
+      "color": "#22aaff"
+    }
+  ],
+  "activeBoardId": "arduino-uno"
+}
